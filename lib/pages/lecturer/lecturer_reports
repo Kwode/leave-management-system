@@ -1,0 +1,219 @@
+import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
+
+class ReportsAnalyticsPage extends StatelessWidget {
+  const ReportsAnalyticsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        title: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20.0),
+          child: Text(
+            "Reports & Analytics",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 30,
+              color: const Color.fromARGB(255, 0, 34, 61),
+            ),
+          ),
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(30.0),
+        child: Column(
+          children: [
+            // Summary Cards
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildSummaryCard("Total Leaves Taken", "25", Colors.teal),
+                _buildSummaryCard("Pending Leave Requests", "4", Colors.deepOrange),
+                _buildSummaryCard("Annual Leave Left", "12", Colors.indigo),
+              ],
+            ),
+
+            SizedBox(height: 30),
+
+            // Bar Chart for Leave Type Breakdown
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(255, 0, 99, 31),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              height: 300,
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Leave Type Breakdown",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 22,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Expanded(child: _buildBarChart()),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 30),
+
+            // Pie Chart for Leave Status Distribution (Sample)
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(255, 93, 0, 97),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              height: 300,
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Leave Status Distribution",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 22,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Expanded(child: _buildPieChart()),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard(String title, String count, Color color) {
+    return Container(
+      width: 350,
+      height: 120,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              )),
+          Spacer(),
+          Text(
+            count,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 36,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBarChart() {
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: 12,
+        barTouchData: BarTouchData(enabled: true),
+
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: Colors.white.withOpacity(0.2),
+            strokeWidth: 1,
+          ),
+        ),
+
+        titlesData: FlTitlesData(
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, _) {
+                switch(value.toInt()) {
+                  case 0: return Text('Annual', style: TextStyle(color: Colors.white));
+                  case 1: return Text('Sick', style: TextStyle(color: Colors.white));
+                  case 2: return Text('Maternity', style: TextStyle(color: Colors.white));
+                  case 3: return Text('Study', style: TextStyle(color: Colors.white));
+                  default: return Text('');
+                }
+              }
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 35,
+              getTitlesWidget: (value, _) => Text(
+                value.toInt().toString(),
+                style: TextStyle(color: Colors.white),
+              ),
+            )
+          ),
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+
+        borderData: FlBorderData(show: false),
+
+        barGroups: [
+          BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: 8, color: Colors.white)]),
+          BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: 5, color: Colors.white)]),
+          BarChartGroupData(x: 2, barRods: [BarChartRodData(toY: 3, color: Colors.white)]),
+          BarChartGroupData(x: 3, barRods: [BarChartRodData(toY: 7, color: Colors.white)]),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPieChart() {
+    return PieChart(
+      PieChartData(
+        sectionsSpace: 2,
+        centerSpaceRadius: 40,
+        sections: [
+          PieChartSectionData(
+            color: Colors.green,
+            value: 25,
+            title: 'Approved',
+            radius: 80,
+            titleStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          PieChartSectionData(
+            color: Colors.orange,
+            value: 10,
+            title: 'Pending',
+            radius: 70,
+            titleStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          PieChartSectionData(
+            color: Colors.red,
+            value: 5,
+            title: 'Rejected',
+            radius: 60,
+            titleStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:leave_management_system/pages/apply_for_leave_page.dart';
-import 'package:leave_management_system/pages/dashboard_page.dart';
+import 'package:leave_management_system/pages/lecturer/apply_for_leave_page.dart';
+import 'package:leave_management_system/pages/lecturer/dashboard_page.dart';
+import 'package:leave_management_system/pages/lecturer/leave_history.dart';
+import 'package:leave_management_system/pages/lecturer/lecturer-calendar.dart';
+import 'package:leave_management_system/pages/lecturer/lecturer_reports';
+import 'package:leave_management_system/pages/lecturer/notifications_lecturer.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -16,13 +20,10 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = [
     DashboardPage(),
     ApplyForLeavePage(),
-    DashboardPage(),
-    DashboardPage(),
-    DashboardPage(),
-    DashboardPage(),
-    DashboardPage(),
-    DashboardPage(),
-    DashboardPage(),
+    LeaveHistoryPage(),
+    NotificationsPage(),
+    ReportsAnalyticsPage(),
+    CalendarPage(),
   ];
 
   void _onTileTap(int index) {
@@ -127,7 +128,7 @@ class _HomePageState extends State<HomePage> {
                             color: const Color.fromARGB(255, 240, 240, 240),
                           ),
                         ),
-                        onTap: () => _onTileTap(3),
+                        onTap: () => _onTileTap(4),
                       ),
 
                       SizedBox(height: 10),
@@ -143,7 +144,7 @@ class _HomePageState extends State<HomePage> {
                             color: const Color.fromARGB(255, 240, 240, 240),
                           ),
                         ),
-                        onTap: () => _onTileTap(3),
+                        onTap: () => _onTileTap(5),
                       ),
 
                       SizedBox(height: 300),

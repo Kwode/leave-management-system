@@ -1,18 +1,19 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class SignInPage extends StatelessWidget {
-  const SignInPage({super.key});
+class SignupPage extends StatelessWidget {
+  const SignupPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final TextEditingController email = TextEditingController();
     final TextEditingController password = TextEditingController();
+    final TextEditingController confirmpassword = TextEditingController();
 
     Future<void> signup(String email, String password) async {
       try {
         UserCredential userCredential = await FirebaseAuth.instance
-            .signInWithEmailAndPassword(email: email, password: password);
+            .createUserWithEmailAndPassword(email: email, password: password);
 
         String uid = userCredential.user!.uid; // Get user ID
 
@@ -39,7 +40,7 @@ class SignInPage extends StatelessWidget {
             children: [
               //Login text
               Text(
-                "Welcome back!",
+                "Join Us Today!",
                 style: TextStyle(
                   color: Colors.black,
                   fontSize: 40,
@@ -92,6 +93,29 @@ class SignInPage extends StatelessWidget {
                 ),
               ),
 
+              SizedBox(height: 10),
+
+              //textfield for confirm password
+              TextField(
+                controller: confirmpassword,
+                obscureText: true,
+                decoration: InputDecoration(
+                  hintText: "Confirm Password",
+                  border: OutlineInputBorder(),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: const Color.fromARGB(255, 0, 53, 211),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: const Color.fromARGB(255, 0, 53, 211),
+                      width: 2,
+                    ),
+                  ),
+                ),
+              ),
+
               SizedBox(height: 30),
 
               TextButton(
@@ -118,7 +142,7 @@ class SignInPage extends StatelessWidget {
                   ),
                   child: Center(
                     child: Text(
-                      "Sign In",
+                      "Sign Up",
                       style: TextStyle(color: Colors.white),
                     ),
                   ),
@@ -131,20 +155,20 @@ class SignInPage extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text("Don't Have an account?"),
+                  Text("Already a member?"),
 
                   SizedBox(width: 4),
 
                   GestureDetector(
                     child: Text(
-                      "Sign Up",
+                      "Log In",
                       style: TextStyle(
                         color: const Color.fromARGB(255, 0, 53, 211),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     onTap: () {
-                      Navigator.pushNamed(context, "signup");
+                      Navigator.pushNamed(context, "signin");
                     },
                   ),
                 ],

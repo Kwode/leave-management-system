@@ -28,7 +28,7 @@ class NotificationsOrColleaguesCard extends StatelessWidget {
               ),
             ),
 
-SizedBox(height: 2,),
+            SizedBox(height: 2),
 
             Expanded(
               child: Row(

@@ -33,6 +33,25 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    // TODO: Add SDKs for Firebase products that you want to use
+    // https://firebase.google.com/docs/web/setup#available-libraries
+  
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAl1cqg_cRFYPUWvCkr08WL5RVI_IH-cyQ",
+      authDomain: "leave-managent-system.firebaseapp.com",
+      projectId: "leave-managent-system",
+      storageBucket: "leave-managent-system.firebasestorage.app",
+      messagingSenderId: "460464719533",
+      appId: "1:460464719533:web:4561d7fedf0f40cd3ce824"
+    };
+  
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
