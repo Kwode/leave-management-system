@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Leave Management System',
       debugShowCheckedModeBanner: false,
-      home: HomePageAdmin(),
+      home: SignupPage(),
 
       routes: {
         "signin": (context) => SignInPage(),

@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 import 'package:leave_management_system/components/leave_type_breakdown.dart';
 import 'package:leave_management_system/components/notifications_or_colleagues_card.dart';
 import 'package:leave_management_system/components/status_badge.dart';
@@ -9,6 +10,9 @@ class DashboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get the current user
+    User? currentUser = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -30,13 +34,12 @@ class DashboardPage extends StatelessWidget {
                             color: const Color.fromARGB(255, 0, 34, 61),
                             size: 30,
                           ),
-
-                          SizedBox(width: 10),
-
+                          const SizedBox(width: 10),
+                          // Display the current user's email or 'Guest' if null
                           Text(
-                            "John Doe",
-                            style: TextStyle(
-                              color: const Color.fromARGB(255, 0, 34, 61),
+                            currentUser != null ? currentUser.email! : "Guest",
+                            style: const TextStyle(
+                              color: Color.fromARGB(255, 0, 34, 61),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -51,17 +54,16 @@ class DashboardPage extends StatelessWidget {
         ],
         title: Padding(
           padding: const EdgeInsets.symmetric(vertical: 20.0),
-          child: Text(
+          child: const Text(
             "Dashboard",
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 30,
-              color: const Color.fromARGB(255, 0, 34, 61),
+              color: Color.fromARGB(255, 0, 34, 61),
             ),
           ),
         ),
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(30.0),
         child: Column(
@@ -71,14 +73,14 @@ class DashboardPage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
                   height: 120,
                   width: 400,
                   decoration: BoxDecoration(
                     color: const Color.fromARGB(255, 1, 168, 151),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: ListTile(
+                  child: const ListTile(
                     title: Text(
                       "Leave Balance",
                       style: TextStyle(
@@ -97,16 +99,15 @@ class DashboardPage extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 Container(
-                  padding: EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
                   height: 120,
                   width: 400,
                   decoration: BoxDecoration(
                     color: const Color.fromARGB(255, 0, 101, 195),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: ListTile(
+                  child: const ListTile(
                     title: Text(
                       "Pending Approvals",
                       style: TextStyle(
@@ -125,16 +126,15 @@ class DashboardPage extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 Container(
-                  padding: EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
                   height: 120,
                   width: 400,
                   decoration: BoxDecoration(
                     color: const Color.fromARGB(255, 0, 51, 146),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: ListTile(
+                  child: const ListTile(
                     title: Text(
                       "Leaves This Month",
                       style: TextStyle(
@@ -156,30 +156,29 @@ class DashboardPage extends StatelessWidget {
               ],
             ),
 
-            SizedBox(height: 30),
+            const SizedBox(height: 30),
 
             Row(
               children: [
                 Column(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color.fromARGB(255, 93, 0, 97),
-                        borderRadius: BorderRadius.circular(8),
+                  children: const [
+                    ColoredBox(
+                      color: Color.fromARGB(255, 93, 0, 97),
+                      child: SizedBox(
+                        height: 300,
+                        width: 470,
+                        child: Center(child: Text('RecentRequestsCard Placeholder', style: TextStyle(color: Colors.white))),
                       ),
-                      height: 300,
-                      width: 470,
-                      child: RecentRequestsCard(),
                     ),
                   ],
                 ),
 
-                SizedBox(width: 13),
+                const SizedBox(width: 13),
 
                 //others
                 Container(
-                  padding: EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: const Color.fromARGB(255, 0, 99, 31),
                     borderRadius: BorderRadius.circular(8),
@@ -190,7 +189,7 @@ class DashboardPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           "Leave Summary",
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
@@ -199,7 +198,7 @@ class DashboardPage extends StatelessWidget {
                           ),
                         ),
 
-                        SizedBox(height: 20,),
+                        const SizedBox(height: 20),
 
                         Expanded(child: buildBarChart()),
                       ],
@@ -209,7 +208,7 @@ class DashboardPage extends StatelessWidget {
               ],
             ),
 
-            SizedBox(height: 30),
+            const SizedBox(height: 30),
 
             Container(
               decoration: BoxDecoration(
@@ -218,7 +217,7 @@ class DashboardPage extends StatelessWidget {
               ),
               height: 130,
               width: 1226,
-              child: NotificationsOrColleaguesCard(),
+              child: const Center(child: Text('NotificationsOrColleaguesCard Placeholder', style: TextStyle(color: Colors.white))),
             ),
           ],
         ),
@@ -233,27 +232,19 @@ class DashboardPage extends StatelessWidget {
         maxY: 10,
         barTouchData: BarTouchData(enabled: true),
 
-        // 🎯 Grid Lines Customization
         gridData: FlGridData(
           show: true,
           drawVerticalLine: true,
-          getDrawingHorizontalLine:
-              (value) => FlLine(
-                color: Colors.white.withOpacity(
-                  0.2,
-                ), // light white horizontal grid lines
-                strokeWidth: 1,
-              ),
-          getDrawingVerticalLine:
-              (value) => FlLine(
-                color: Colors.white.withOpacity(
-                  0.2,
-                ), // light white vertical grid lines
-                strokeWidth: 1,
-              ),
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: Colors.white.withOpacity(0.2),
+            strokeWidth: 1,
+          ),
+          getDrawingVerticalLine: (value) => FlLine(
+            color: Colors.white.withOpacity(0.2),
+            strokeWidth: 1,
+          ),
         ),
 
-        // 🔢 Axis Titles Customization
         titlesData: FlTitlesData(
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
@@ -261,27 +252,27 @@ class DashboardPage extends StatelessWidget {
               getTitlesWidget: (value, _) {
                 switch (value.toInt()) {
                   case 0:
-                    return Text('Jan', style: TextStyle(color: Colors.white));
+                    return const Text('Jan', style: TextStyle(color: Colors.white));
                   case 1:
-                    return Text('Feb', style: TextStyle(color: Colors.white));
+                    return const Text('Feb', style: TextStyle(color: Colors.white));
                   case 2:
-                    return Text('Mar', style: TextStyle(color: Colors.white));
+                    return const Text('Mar', style: TextStyle(color: Colors.white));
                   case 3:
-                    return Text('Apr', style: TextStyle(color: Colors.white));
+                    return const Text('Apr', style: TextStyle(color: Colors.white));
                   case 4:
-                    return Text('May', style: TextStyle(color: Colors.white));
+                    return const Text('May', style: TextStyle(color: Colors.white));
                   case 5:
-                    return Text('Jun', style: TextStyle(color: Colors.white));
+                    return const Text('Jun', style: TextStyle(color: Colors.white));
                   case 6:
-                    return Text('Jul', style: TextStyle(color: Colors.white));
+                    return const Text('Jul', style: TextStyle(color: Colors.white));
                   case 7:
-                    return Text('Aug', style: TextStyle(color: Colors.white));
+                    return const Text('Aug', style: TextStyle(color: Colors.white));
                   case 8:
-                    return Text('Sep', style: TextStyle(color: Colors.white));
+                    return const Text('Sep', style: TextStyle(color: Colors.white));
                   case 9:
-                    return Text('Oct', style: TextStyle(color: Colors.white));
+                    return const Text('Oct', style: TextStyle(color: Colors.white));
                   default:
-                    return Text('');
+                    return const Text('');
                 }
               },
             ),
@@ -292,9 +283,9 @@ class DashboardPage extends StatelessWidget {
               getTitlesWidget: (value, _) {
                 return Text(
                   value.toInt().toString(),
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
-                  ), // 💡 white left axis numbers
+                  ),
                 );
               },
             ),
@@ -305,7 +296,6 @@ class DashboardPage extends StatelessWidget {
 
         borderData: FlBorderData(show: false),
 
-        // 📊 Bar Data
         barGroups: [
           BarChartGroupData(
             x: 0,

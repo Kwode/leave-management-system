@@ -21,7 +21,7 @@ class ReportsAnalyticsPage extends StatelessWidget {
           ),
         ),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(30.0),
         child: Column(
           children: [
@@ -65,7 +65,7 @@ class ReportsAnalyticsPage extends StatelessWidget {
 
             SizedBox(height: 30),
 
-            // Pie Chart for Leave Status Distribution (Sample)
+            // Pie Chart for Leave Status Distribution
             Container(
               padding: EdgeInsets.all(20),
               decoration: BoxDecoration(
