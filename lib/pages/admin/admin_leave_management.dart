@@ -1,10 +1,80 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-class LeaveManagementPage extends StatelessWidget {
+class LeaveManagementPage extends StatefulWidget {
   const LeaveManagementPage({super.key});
 
   @override
+  _LeaveManagementPageState createState() => _LeaveManagementPageState();
+}
+
+class _LeaveManagementPageState extends State<LeaveManagementPage> {
+  String? _filterStatus = 'All';
+  String _searchQuery = '';
+  List<Map<String, dynamic>> leaveRequests = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLeaveRequests();
+  }
+
+  Future<void> _fetchLeaveRequests() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('leave_applications').get();
+      setState(() {
+        leaveRequests = snapshot.docs.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return {
+            'id': doc.id,
+            'userId': data['userId'] ?? '',
+            'leaveType': data['leaveType'] ?? '',
+            'startDate': data['startDate'] ?? '',
+            'endDate': data['endDate'] ?? '',
+            'status': data['status'] ?? '',
+          };
+        }).toList();
+      });
+    } catch (e) {
+      print("Error fetching leave requests: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to fetch leave requests')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _updateLeaveStatus(String id, String status) async {
+    try {
+      await FirebaseFirestore.instance.collection('leave_applications').doc(id).update({'status': status});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Leave application $status')),
+      );
+      await _fetchLeaveRequests(); // Refresh the list after updating
+    } catch (e) {
+      print("Error updating leave status: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to update leave status')),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Filter leave requests based on search query and selected status
+    List<Map<String, dynamic>> filteredRequests = leaveRequests.where((request) {
+      final matchesSearch = request['userId'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesStatus = _filterStatus == 'All' || request['status'] == _filterStatus;
+      return matchesSearch && matchesStatus;
+    }).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Leave Management"),
@@ -20,14 +90,20 @@ class LeaveManagementPage extends StatelessWidget {
               children: [
                 Expanded(
                   child: TextField(
-                    decoration: InputDecoration(
-                      labelText: "Search by Employee Name",
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                    },
+                    decoration: const InputDecoration(
+                      labelText: "Search by Employee (User ID)",
                       border: OutlineInputBorder(),
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 DropdownButton<String>(
+                  value: _filterStatus,
                   items: <String>['All', 'Pending', 'Approved', 'Rejected']
                       .map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(
@@ -35,7 +111,11 @@ class LeaveManagementPage extends StatelessWidget {
                       child: Text(value),
                     );
                   }).toList(),
-                  onChanged: (String? newValue) {},
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _filterStatus = newValue;
+                    });
+                  },
                   hint: const Text("Filter"),
                 ),
               ],
@@ -43,47 +123,54 @@ class LeaveManagementPage extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            // Leave Requests Table
-            Expanded(
-              child: SingleChildScrollView(
-                child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text("Employee")),
-                    DataColumn(label: Text("Leave Type")),
-                    DataColumn(label: Text("Start Date")),
-                    DataColumn(label: Text("End Date")),
-                    DataColumn(label: Text("Status")),
-                    DataColumn(label: Text("Actions")),
-                  ],
-                  rows: List<DataRow>.generate(
-                    10,
-                    (index) => DataRow(cells: [
-                      DataCell(Text("Employee ${index + 1}")),
-                      DataCell(Text("Sick Leave")),
-                      DataCell(Text("2023-10-01")),
-                      DataCell(Text("2023-10-05")),
-                      DataCell(Text("Pending")),
-                      DataCell(Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.check, color: Colors.green),
-                            onPressed: () {
-                              // Approve action
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close, color: Colors.red),
-                            onPressed: () {
-                              // Reject action
-                            },
-                          ),
-                        ],
-                      )),
-                    ]),
+            // Loading indicator or message when no data
+            if (_isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (filteredRequests.isEmpty)
+              const Center(child: Text('No leave requests found.'))
+            else
+              // Leave Requests Table
+              Expanded(
+                child: SingleChildScrollView(
+                  child: DataTable(
+                    columns: const [
+                      DataColumn(label: Text("Employee ID")),
+                      DataColumn(label: Text("Leave Type")),
+                      DataColumn(label: Text("Start Date")),
+                      DataColumn(label: Text("End Date")),
+                      DataColumn(label: Text("Status")),
+                      DataColumn(label: Text("Actions")),
+                    ],
+                    rows: filteredRequests.map((request) {
+                      return DataRow(cells: [
+                        DataCell(Text(request['userId'])),
+                        DataCell(Text(request['leaveType'])),
+                        DataCell(Text(request['startDate'])),
+                        DataCell(Text(request['endDate'])),
+                        DataCell(Text(request['status'])),
+                        DataCell(Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.check, color: Colors.green),
+                              onPressed: request['status'] == 'Pending'
+                                  ? () => _updateLeaveStatus(request['id'], 'Approved')
+                                  : null,
+                              tooltip: 'Approve',
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.red),
+                              onPressed: request['status'] == 'Pending'
+                                  ? () => _updateLeaveStatus(request['id'], 'Rejected')
+                                  : null,
+                              tooltip: 'Reject',
+                            ),
+                          ],
+                        )),
+                      ]);
+                    }).toList(),
                   ),
                 ),
               ),
-            ),
 
             const SizedBox(height: 20),
 
@@ -95,8 +182,8 @@ class LeaveManagementPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
-                children: const [
-                  Text(
+                children: [
+                  const Text(
                     "Leave Requests Summary",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -104,13 +191,13 @@ class LeaveManagementPage extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   Text(
-                    "Total Requests: 100\n"
-                    "Approved: 70\n"
-                    "Pending: 20\n"
-                    "Rejected: 10",
-                    style: TextStyle(color: Colors.white70),
+                    "Total Requests: ${leaveRequests.length}\n"
+                    "Approved: ${leaveRequests.where((r) => r['status'] == 'Approved').length}\n"
+                    "Pending: ${leaveRequests.where((r) => r['status'] == 'Pending').length}\n"
+                    "Rejected: ${leaveRequests.where((r) => r['status'] == 'Rejected').length}",
+                    style: const TextStyle(color: Colors.white70),
                   ),
                 ],
               ),

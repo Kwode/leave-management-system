@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:leave_management_system/pages/lecturer/apply_for_leave_page.dart';
 import 'package:leave_management_system/pages/lecturer/dashboard_page.dart';
@@ -151,7 +152,7 @@ class _HomePageState extends State<HomePage> {
 
                       ListTile(
                         onTap: () {
-                          Navigator.pushNamed(context, "signin");
+                          FirebaseAuth.instance.signOut();
                         },
                         leading: Icon(
                           Icons.logout,
