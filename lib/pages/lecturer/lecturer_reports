@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
@@ -26,74 +27,117 @@ class ReportsAnalyticsPage extends StatelessWidget {
         child: Column(
           children: [
             // Summary Cards
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildSummaryCard("Total Leaves Taken", "25", Colors.teal),
-                _buildSummaryCard("Pending Leave Requests", "4", Colors.deepOrange),
-                _buildSummaryCard("Annual Leave Left", "12", Colors.indigo),
-              ],
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('leave_applications').snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+
+                final leaveRequests = snapshot.data!.docs;
+                final totalLeavesTaken = leaveRequests.length;
+                final pendingRequests = leaveRequests.where((doc) => doc['status'] == 'Pending').length;
+                // You might want to calculate annual leave left properly, this is placeholder:
+                final annualLeaveLeft = calculateAnnualLeaveLeft(leaveRequests);
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildSummaryCard("Total Leaves Taken", totalLeavesTaken.toString(), Colors.teal),
+                    _buildSummaryCard("Pending Leave Requests", pendingRequests.toString(), Colors.deepOrange),
+                    _buildSummaryCard("Annual Leave Left", annualLeaveLeft.toString(), Colors.indigo),
+                  ],
+                );
+              },
             ),
 
-            SizedBox(height: 30),
+            const SizedBox(height: 30),
 
             // Bar Chart for Leave Type Breakdown
             Container(
-              padding: EdgeInsets.all(20),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: const Color.fromARGB(255, 0, 99, 31),
                 borderRadius: BorderRadius.circular(8),
               ),
               height: 300,
               width: double.infinity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Leave Type Breakdown",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 22,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Expanded(child: _buildBarChart()),
-                ],
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('leave_applications').snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  final leaveRequests = snapshot.data!.docs;
+                  return _buildBarChart(leaveRequests);
+                },
               ),
             ),
 
-            SizedBox(height: 30),
+            const SizedBox(height: 30),
 
             // Pie Chart for Leave Status Distribution
             Container(
-              padding: EdgeInsets.all(20),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: const Color.fromARGB(255, 93, 0, 97),
                 borderRadius: BorderRadius.circular(8),
               ),
               height: 300,
               width: double.infinity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Leave Status Distribution",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 22,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Expanded(child: _buildPieChart()),
-                ],
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('leave_applications').snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  final leaveRequests = snapshot.data!.docs;
+                  return _buildPieChart(leaveRequests);
+                },
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  int calculateAnnualLeaveLeft(List<QueryDocumentSnapshot> leaveRequests) {
+    // This is a stub; real calculation depends on your leave balance logic
+    // e.g., total quota minus approved annual leaves taken, etc.
+    // For demonstration, assume quota 30 days, count approved annual leaves duration sum:
+    int quota = 30;
+    int used = 0;
+
+    for (var doc in leaveRequests) {
+      if (doc['leaveType'] == 'Annual' && doc['status'] == 'Approved') {
+        DateTime? start = parseDate(doc['startDate']);
+        DateTime? end = parseDate(doc['endDate']);
+        if (start != null && end != null) {
+          used += end.difference(start).inDays + 1;
+        }
+      }
+    }
+
+    return (quota - used).clamp(0, quota);
+  }
+
+  DateTime? parseDate(dynamic dateStr) {
+    if (dateStr == null) return null;
+    try {
+      return DateTime.parse(dateStr.toString());
+    } catch (_) {
+      return null;
+    }
   }
 
   Widget _buildSummaryCard(String title, String count, Color color) {
@@ -109,15 +153,15 @@ class ReportsAnalyticsPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               )),
-          Spacer(),
+          const Spacer(),
           Text(
             count,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 36,
               fontWeight: FontWeight.bold,
@@ -128,13 +172,30 @@ class ReportsAnalyticsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildBarChart() {
+  Widget _buildBarChart(List<QueryDocumentSnapshot> leaveRequests) {
+    final Map<String, int> leaveTypeCounts = {
+      'Annual': 0,
+      'Sick': 0,
+      'Maternity': 0,
+      'Study': 0,
+    };
+
+    for (var doc in leaveRequests) {
+      final leaveType = doc['leaveType'] as String? ?? '';
+      if (leaveTypeCounts.containsKey(leaveType)) {
+        leaveTypeCounts[leaveType] = leaveTypeCounts[leaveType]! + 1;
+      }
+    }
+
+    final maxY = leaveTypeCounts.values.isEmpty
+    ? 10.0
+    : leaveTypeCounts.values.reduce((a, b) => a > b ? a : b).toDouble() + 2.0;
+
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
-        maxY: 12,
+        maxY: maxY,
         barTouchData: BarTouchData(enabled: true),
-
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
@@ -143,76 +204,112 @@ class ReportsAnalyticsPage extends StatelessWidget {
             strokeWidth: 1,
           ),
         ),
-
         titlesData: FlTitlesData(
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, _) {
-                switch(value.toInt()) {
-                  case 0: return Text('Annual', style: TextStyle(color: Colors.white));
-                  case 1: return Text('Sick', style: TextStyle(color: Colors.white));
-                  case 2: return Text('Maternity', style: TextStyle(color: Colors.white));
-                  case 3: return Text('Study', style: TextStyle(color: Colors.white));
-                  default: return Text('');
-                }
-              }
-            ),
+                showTitles: true,
+                getTitlesWidget: (value, _) {
+                  switch (value.toInt()) {
+                    case 0:
+                      return const Text('Annual', style: TextStyle(color: Colors.white));
+                    case 1:
+                      return const Text('Sick', style: TextStyle(color: Colors.white));
+                    case 2:
+                      return const Text('Maternity', style: TextStyle(color: Colors.white));
+                    case 3:
+                      return const Text('Study', style: TextStyle(color: Colors.white));
+                    default:
+                      return const Text('');
+                  }
+                }),
           ),
           leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 35,
-              getTitlesWidget: (value, _) => Text(
-                value.toInt().toString(),
-                style: TextStyle(color: Colors.white),
-              ),
-            )
-          ),
+              sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 35,
+            getTitlesWidget: (value, _) => Text(
+              value.toInt().toString(),
+              style: const TextStyle(color: Colors.white),
+            ),
+          )),
           topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-
         borderData: FlBorderData(show: false),
-
         barGroups: [
-          BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: 8, color: Colors.white)]),
-          BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: 5, color: Colors.white)]),
-          BarChartGroupData(x: 2, barRods: [BarChartRodData(toY: 3, color: Colors.white)]),
-          BarChartGroupData(x: 3, barRods: [BarChartRodData(toY: 7, color: Colors.white)]),
+          BarChartGroupData(
+              x: 0,
+              barRods: [BarChartRodData(toY: leaveTypeCounts['Annual']!.toDouble(), color: Colors.white)]),
+          BarChartGroupData(
+              x: 1,
+              barRods: [BarChartRodData(toY: leaveTypeCounts['Sick']!.toDouble(), color: Colors.white)]),
+          BarChartGroupData(
+              x: 2,
+              barRods: [BarChartRodData(toY: leaveTypeCounts['Maternity']!.toDouble(), color: Colors.white)]),
+          BarChartGroupData(
+              x: 3,
+              barRods: [BarChartRodData(toY: leaveTypeCounts['Study']!.toDouble(), color: Colors.white)]),
         ],
       ),
     );
   }
 
-  Widget _buildPieChart() {
+  Widget _buildPieChart(List<QueryDocumentSnapshot> leaveRequests) {
+    final Map<String, double> statusCounts = {
+      'Approved': 0,
+      'Pending': 0,
+      'Rejected': 0,
+    };
+
+    for (var doc in leaveRequests) {
+      final status = doc['status'] as String? ?? '';
+      if (statusCounts.containsKey(status)) {
+        statusCounts[status] = statusCounts[status]! + 1;
+      }
+    }
+
+    final total = statusCounts.values.fold<double>(0, (a, b) => a + b);
+    if (total == 0) {
+      // Avoid division by zero; show empty pie chart
+      return const Center(child: Text('No data for leave status distribution', style: TextStyle(color: Colors.white)));
+    }
+
+    List<PieChartSectionData> sections = [];
+
+    statusCounts.forEach((status, count) {
+      final percent = (count / total) * 100;
+      final radius = 60.0 + percent; // vary radius by percentage for emphasis
+      
+      Color color;
+      switch (status) {
+        case 'Approved':
+          color = Colors.green;
+          break;
+        case 'Pending':
+          color = Colors.orange;
+          break;
+        case 'Rejected':
+          color = Colors.red;
+          break;
+        default:
+          color = Colors.grey;
+      }
+
+      sections.add(PieChartSectionData(
+        color: color,
+        value: count,
+        title: '${status}\n${percent.toStringAsFixed(1)}%',
+        radius: radius,
+        titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+        titlePositionPercentageOffset: 0.55,
+      ));
+    });
+
     return PieChart(
       PieChartData(
         sectionsSpace: 2,
         centerSpaceRadius: 40,
-        sections: [
-          PieChartSectionData(
-            color: Colors.green,
-            value: 25,
-            title: 'Approved',
-            radius: 80,
-            titleStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          PieChartSectionData(
-            color: Colors.orange,
-            value: 10,
-            title: 'Pending',
-            radius: 70,
-            titleStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          PieChartSectionData(
-            color: Colors.red,
-            value: 5,
-            title: 'Rejected',
-            radius: 60,
-            titleStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-        ],
+        sections: sections,
       ),
     );
   }

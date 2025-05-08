@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 // StatusBadge widget for styled status display
@@ -47,7 +48,7 @@ class RecentRequestsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             "Recent Leave Requests",
             style: TextStyle(
               fontWeight: FontWeight.bold,
@@ -56,109 +57,98 @@ class RecentRequestsCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: const [
-                DataColumn(
-                  label: Text(
-                    'Leave Type',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream:
+                  FirebaseFirestore.instance
+                      .collection('leave_applications')
+                      .orderBy(
+                        'requestDate',
+                        descending: true,
+                      ) // Assuming you have a requestDate field
+                      .limit(5) // Limit to the most recent 5 requests
+                      .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+
+                final leaveRequests = snapshot.data!.docs;
+
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    columns: const [
+                      DataColumn(
+                        label: Text(
+                          'Leave Type',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Date',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Status',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                    rows:
+                        leaveRequests.map((doc) {
+                          String leaveType =
+                              doc['leaveType'] ??
+                              'N/A'; // Adjust field names as necessary
+                          String dateRange =
+                              doc['dateRange'] ??
+                              'N/A'; // Adjust field names as necessary
+                          String status =
+                              doc['status'] ??
+                              'Unknown'; // Adjust field names as necessary
+
+                          return DataRow(
+                            cells: [
+                              DataCell(
+                                Text(
+                                  leaveType,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  dateRange,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              DataCell(StatusBadge(status: status)),
+                            ],
+                          );
+                        }).toList(),
                   ),
-                ),
-                DataColumn(
-                  label: Text(
-                    'Date',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  label: Text(
-                    'Status',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-              rows: const [
-                DataRow(
-                  cells: [
-                    DataCell(
-                      Text(
-                        'Medical Leave',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        'Apr 3–5, 2025',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    DataCell(StatusBadge(status: "Approved")),
-                  ],
-                ),
-                DataRow(
-                  cells: [
-                    DataCell(
-                      Text(
-                        'Study Leave',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        'Apr 10–12, 2025',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    DataCell(StatusBadge(status: "Pending")),
-                  ],
-                ),
-                DataRow(
-                  cells: [
-                    DataCell(
-                      Text(
-                        'Casual Leave',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        'Mar 22, 2025',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    DataCell(StatusBadge(status: "Rejected")),
-                  ],
-                ),
-              ],
+                );
+              },
             ),
           ),
         ],
