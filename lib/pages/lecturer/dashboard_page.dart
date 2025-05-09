@@ -2,9 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:leave_management_system/components/notifications_or_colleagues_card.dart';
+import 'package:leave_management_system/components/status_badge.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
+
+  // Assumed leave quota per user per year for leave balance calculation
+  static const int annualLeaveQuota = 30;
 
   @override
   Widget build(BuildContext context) {
@@ -79,39 +84,78 @@ class DashboardPage extends StatelessWidget {
                 }
                 final leaveRequests = snapshot.data!.docs;
 
-                // Calculate stats
-                int pendingApprovals =
-                    leaveRequests
-                        .where((doc) => doc['status'] == 'Pending')
-                        .length;
+                int pendingApprovals = 0;
+                int leavesThisMonth = 0;
+                int usedAnnualLeaves = 0;
 
-                int leavesThisMonth =
-                    leaveRequests.where((doc) {
-                      final startDate =
-                          (doc['startDate'] as Timestamp).toDate();
-                      final today = DateTime.now();
-                      return startDate.month == today.month &&
-                          startDate.year == today.year;
-                    }).length;
+                final today = DateTime.now();
+                final currentYear = today.year;
+                final currentMonth = today.month;
 
-                // Replace with your actual leave balance logic
-                int leaveBalance = 12;
+                for (var doc in leaveRequests) {
+                  try {
+                    final data = doc.data() as Map<String, dynamic>;
+
+                    if (doc['userId'] != currentUser?.uid) continue;
+
+                    final status =
+                        (data['status'] ?? '').toString().toLowerCase();
+
+                    if (status == 'pending') pendingApprovals++;
+
+                    DateTime? startDate;
+                    DateTime? endDate;
+                    final startDateRaw = data['startDate'];
+                    final endDateRaw = data['endDate'];
+
+                    if (startDateRaw is Timestamp)
+                      startDate = startDateRaw.toDate();
+                    else if (startDateRaw is String)
+                      startDate = DateTime.tryParse(startDateRaw);
+
+                    if (endDateRaw is Timestamp)
+                      endDate = endDateRaw.toDate();
+                    else if (endDateRaw is String)
+                      endDate = DateTime.tryParse(endDateRaw);
+
+                    if (startDate != null && endDate != null) {
+                      if (startDate.year == currentYear &&
+                          startDate.month == currentMonth)
+                        leavesThisMonth++;
+
+                      final leaveType =
+                          (data['leaveType'] ?? '').toString().toLowerCase();
+                      if (leaveType == 'annual' && status == 'approved') {
+                        final duration =
+                            endDate.difference(startDate).inDays + 1;
+                        usedAnnualLeaves += duration;
+                      }
+                    }
+                  } catch (_) {
+                    continue;
+                  }
+                }
+
+                int leaveBalance = (annualLeaveQuota - usedAnnualLeaves).clamp(
+                  0,
+                  annualLeaveQuota,
+                );
 
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildDashboardCard(
-                      "Leave Balance",
+                      'Leave Balance',
                       leaveBalance.toString(),
                       const Color.fromARGB(255, 1, 168, 151),
                     ),
                     _buildDashboardCard(
-                      "Pending Approvals",
+                      'Pending Approvals',
                       pendingApprovals.toString(),
                       const Color.fromARGB(255, 0, 101, 195),
                     ),
                     _buildDashboardCard(
-                      "Leaves This Month",
+                      'Leaves This Month',
                       leavesThisMonth.toString(),
                       const Color.fromARGB(255, 0, 51, 146),
                     ),
@@ -124,29 +168,29 @@ class DashboardPage extends StatelessWidget {
 
             Row(
               children: [
-                // Placeholder for recent requests card
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: const [
-                    ColoredBox(
-                      color: Color.fromARGB(255, 93, 0, 97),
-                      child: SizedBox(
-                        height: 300,
-                        width: 470,
-                        child: Center(
-                          child: Text(
-                            'Recent Requests Card Placeholder',
-                            style: TextStyle(color: Colors.white),
+                Expanded(
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: const [
+                        SizedBox(
+                          height: 300,
+                          child: ColoredBox(
+                            color: Color.fromARGB(255, 93, 0, 97),
+                            child: Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: RecentRequestsCard(),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
 
                 const SizedBox(width: 13),
 
-                // Leave Summary Bar Chart streaming data dynamically
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.all(8),
@@ -161,20 +205,18 @@ class DashboardPage extends StatelessWidget {
                               .collection('leave_applications')
                               .snapshots(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
+                        if (snapshot.connectionState == ConnectionState.waiting)
                           return const Center(
                             child: CircularProgressIndicator(),
                           );
-                        }
-                        if (snapshot.hasError) {
+                        if (snapshot.hasError)
                           return Center(
                             child: Text('Error: ${snapshot.error}'),
                           );
-                        }
+
                         final leaveRequests = snapshot.data!.docs;
 
-                        return _buildBarChart(leaveRequests);
+                        return _buildBarChart(leaveRequests, currentUser?.uid);
                       },
                     ),
                   ),
@@ -184,20 +226,8 @@ class DashboardPage extends StatelessWidget {
 
             const SizedBox(height: 30),
 
-            Container(
-              decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 131, 61, 61),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              height: 130,
-              width: double.infinity,
-              child: const Center(
-                child: Text(
-                  'NotificationsOrColleaguesCard Placeholder',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
+            // Replaced placeholder with live notifications or colleagues on leave widget streamed from Firestore
+            const NotificationsOrColleaguesCard(),
           ],
         ),
       ),
@@ -234,9 +264,11 @@ class DashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildBarChart(List<QueryDocumentSnapshot> leaveRequests) {
-    // Sample random monthly data: compute counts of leaves per month for the current year
-    Map<int, int> leaveCounts = Map<int, int>.fromIterable(
+  Widget _buildBarChart(
+    List<QueryDocumentSnapshot> leaveRequests,
+    String? userId,
+  ) {
+    Map<int, int> monthlyCounts = Map.fromIterable(
       List.generate(12, (index) => index + 1),
       key: (item) => item as int,
       value: (item) => 0,
@@ -244,22 +276,32 @@ class DashboardPage extends StatelessWidget {
 
     final currentYear = DateTime.now().year;
 
-    for (var doc in leaveRequests) {
+    for (final doc in leaveRequests) {
       try {
-        final startDate = (doc['startDate'] as Timestamp).toDate();
-        if (startDate.year == currentYear) {
-          leaveCounts[startDate.month] = leaveCounts[startDate.month]! + 1;
+        final data = doc.data() as Map<String, dynamic>;
+        if (data['userId'] != userId) continue;
+
+        DateTime? startDate;
+        final rawStart = data['startDate'];
+
+        if (rawStart is Timestamp)
+          startDate = rawStart.toDate();
+        else if (rawStart is String)
+          startDate = DateTime.tryParse(rawStart);
+
+        if (startDate != null && startDate.year == currentYear) {
+          monthlyCounts[startDate.month] = monthlyCounts[startDate.month]! + 1;
         }
-      } catch (e) {
-        // ignore errors with malformed dates
+      } catch (_) {
+        continue;
       }
     }
 
     final maxY =
-        (leaveCounts.values.isEmpty)
+        monthlyCounts.values.isEmpty
             ? 10.0
-            : leaveCounts.values.reduce((a, b) => a > b ? a : b).toDouble() +
-                2.0;
+            : monthlyCounts.values.reduce((a, b) => a > b ? a : b).toDouble() +
+                2;
 
     return BarChart(
       BarChartData(
@@ -281,67 +323,25 @@ class DashboardPage extends StatelessWidget {
             sideTitles: SideTitles(
               showTitles: true,
               getTitlesWidget: (value, _) {
-                switch (value.toInt()) {
-                  case 0:
-                    return const Text(
-                      'Jan',
-                      style: TextStyle(color: Colors.white),
-                    );
-                  case 1:
-                    return const Text(
-                      'Feb',
-                      style: TextStyle(color: Colors.white),
-                    );
-                  case 2:
-                    return const Text(
-                      'Mar',
-                      style: TextStyle(color: Colors.white),
-                    );
-                  case 3:
-                    return const Text(
-                      'Apr',
-                      style: TextStyle(color: Colors.white),
-                    );
-                  case 4:
-                    return const Text(
-                      'May',
-                      style: TextStyle(color: Colors.white),
-                    );
-                  case 5:
-                    return const Text(
-                      'Jun',
-                      style: TextStyle(color: Colors.white),
-                    );
-                  case 6:
-                    return const Text(
-                      'Jul',
-                      style: TextStyle(color: Colors.white),
-                    );
-                  case 7:
-                    return const Text(
-                      'Aug',
-                      style: TextStyle(color: Colors.white),
-                    );
-                  case 8:
-                    return const Text(
-                      'Sep',
-                      style: TextStyle(color: Colors.white),
-                    );
-                  case 9:
-                    return const Text(
-                      'Oct',
-                      style: TextStyle(color: Colors.white),
-                    );
-                  case 10:
-                    return const Text(
-                      'Nov',
-                      style: TextStyle(color: Colors.white),
-                    );
-                  case 11:
-                    return const Text(
-                      'Dec',
-                      style: TextStyle(color: Colors.white),
-                    );
+                const months = [
+                  'Jan',
+                  'Feb',
+                  'Mar',
+                  'Apr',
+                  'May',
+                  'Jun',
+                  'Jul',
+                  'Aug',
+                  'Sep',
+                  'Oct',
+                  'Nov',
+                  'Dec',
+                ];
+                if (value.toInt() >= 0 && value.toInt() < months.length) {
+                  return Text(
+                    months[value.toInt()],
+                    style: const TextStyle(color: Colors.white),
+                  );
                 }
                 return const Text('');
               },
@@ -350,12 +350,11 @@ class DashboardPage extends StatelessWidget {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              getTitlesWidget: (value, _) {
-                return Text(
-                  value.toInt().toString(),
-                  style: const TextStyle(color: Colors.white),
-                );
-              },
+              getTitlesWidget:
+                  (value, _) => Text(
+                    value.toInt().toString(),
+                    style: const TextStyle(color: Colors.white),
+                  ),
             ),
           ),
           topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -368,7 +367,7 @@ class DashboardPage extends StatelessWidget {
             x: index,
             barRods: [
               BarChartRodData(
-                toY: leaveCounts[month]!.toDouble(),
+                toY: monthlyCounts[month]!.toDouble(),
                 color: Colors.white,
                 width: 18,
                 borderRadius: BorderRadius.circular(0),

@@ -1,11 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 // StatusBadge widget for styled status display
 class StatusBadge extends StatelessWidget {
   final String status;
 
-  const StatusBadge({required this.status});
+  const StatusBadge({required this.status, Key? key}) : super(key: key);
 
   Color getStatusColor() {
     switch (status.toLowerCase()) {
@@ -29,7 +31,7 @@ class StatusBadge extends StatelessWidget {
         border: Border.all(color: getStatusColor()),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(
+      child: SelectableText(
         status,
         style: TextStyle(color: getStatusColor(), fontWeight: FontWeight.bold),
       ),
@@ -41,117 +43,128 @@ class StatusBadge extends StatelessWidget {
 class RecentRequestsCard extends StatelessWidget {
   const RecentRequestsCard({Key? key}) : super(key: key);
 
+  String _formatDateRange(dynamic startRaw, dynamic endRaw) {
+    DateTime? startDate;
+    DateTime? endDate;
+
+    if (startRaw is Timestamp) {
+      startDate = startRaw.toDate();
+    } else if (startRaw is String) {
+      startDate = DateTime.tryParse(startRaw);
+    }
+
+    if (endRaw is Timestamp) {
+      endDate = endRaw.toDate();
+    } else if (endRaw is String) {
+      endDate = DateTime.tryParse(endRaw);
+    }
+
+    final dateFormatter = DateFormat('MMM d');
+
+    if (startDate != null && endDate != null) {
+      if (startDate.year == endDate.year && startDate.month == endDate.month) {
+        return '${dateFormatter.format(startDate)}–${DateFormat('d, y').format(endDate)}';
+      } else {
+        return '${DateFormat('MMM d, y').format(startDate)} – ${DateFormat('MMM d, y').format(endDate)}';
+      }
+    } else if (startDate != null) {
+      return DateFormat('MMM d, y').format(startDate);
+    }
+    return 'N/A';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Recent Leave Requests",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              fontSize: 32,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Recent Leave Requests",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 32,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream:
-                  FirebaseFirestore.instance
-                      .collection('leave_applications')
-                      .orderBy(
-                        'requestDate',
-                        descending: true,
-                      ) // Assuming you have a requestDate field
-                      .limit(5) // Limit to the most recent 5 requests
-                      .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 180,
+              child: StreamBuilder<QuerySnapshot>(
+                stream:
+                    FirebaseFirestore.instance
+                        .collection('leave_applications')
+                        .where(
+                          'userId',
+                          isEqualTo: currentUserId,
+                        ) // Filter by user
+                        .orderBy(
+                          'createdAt',
+                          descending: true,
+                        ) // Sort by creation date
+                        .limit(5)
+                        .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
 
-                final leaveRequests = snapshot.data!.docs;
+                  final leaveRequests = snapshot.data!.docs;
 
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    columns: const [
-                      DataColumn(
-                        label: Text(
-                          'Leave Type',
-                          style: TextStyle(
+                  if (leaveRequests.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No recent leave requests',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    itemCount: leaveRequests.length,
+                    itemBuilder: (context, index) {
+                      final data =
+                          leaveRequests[index].data() as Map<String, dynamic>;
+                      String leaveType = data['leaveType'] ?? 'N/A';
+                      String dateRange = _formatDateRange(
+                        data['startDate'],
+                        data['endDate'],
+                      );
+                      String status = data['status'] ?? 'Unknown';
+
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 4,
+                          horizontal: 0,
+                        ),
+                        title: SelectableText(
+                          leaveType,
+                          style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
+                            fontSize: 16,
                           ),
                         ),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          'Date',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                        subtitle: SelectableText(
+                          dateRange,
+                          style: const TextStyle(color: Colors.white70),
                         ),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          'Status',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                    rows:
-                        leaveRequests.map((doc) {
-                          String leaveType =
-                              doc['leaveType'] ??
-                              'N/A'; // Adjust field names as necessary
-                          String dateRange =
-                              doc['dateRange'] ??
-                              'N/A'; // Adjust field names as necessary
-                          String status =
-                              doc['status'] ??
-                              'Unknown'; // Adjust field names as necessary
-
-                          return DataRow(
-                            cells: [
-                              DataCell(
-                                Text(
-                                  leaveType,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  dateRange,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              DataCell(StatusBadge(status: status)),
-                            ],
-                          );
-                        }).toList(),
-                  ),
-                );
-              },
+                        trailing: StatusBadge(status: status),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

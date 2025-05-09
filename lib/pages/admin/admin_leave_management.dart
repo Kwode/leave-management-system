@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class LeaveManagementPage extends StatefulWidget {
   const LeaveManagementPage({super.key});
@@ -19,37 +20,52 @@ class _LeaveManagementPageState extends State<LeaveManagementPage> {
     super.initState();
     _fetchLeaveRequests();
   }
+// Add at the top of your file
 
-  Future<void> _fetchLeaveRequests() async {
-    setState(() {
-      _isLoading = true;
-    });
-    try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('leave_applications').get();
-      setState(() {
-        leaveRequests = snapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return {
-            'id': doc.id,
-            'userId': data['userId'] ?? '',
-            'leaveType': data['leaveType'] ?? '',
-            'startDate': data['startDate'] ?? '',
-            'endDate': data['endDate'] ?? '',
-            'status': data['status'] ?? '',
-          };
-        }).toList();
-      });
-    } catch (e) {
-      print("Error fetching leave requests: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to fetch leave requests')),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+Future<void> _fetchLeaveRequests() async {
+  setState(() {
+    _isLoading = true;
+  });
+
+  final formatter = DateFormat('MMM d, yyyy'); // e.g. Jan 2, 2025
+
+  String formatDate(dynamic value) {
+    if (value is Timestamp) {
+      return formatter.format(value.toDate());
+    } else if (value is String) {
+      DateTime? dt = DateTime.tryParse(value);
+      return dt != null ? formatter.format(dt) : '';
+    } else {
+      return '';
     }
   }
+
+  try {
+    QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('leave_applications').get();
+    setState(() {
+      leaveRequests = snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          'id': doc.id,
+          'userId': data['userId'] ?? '',
+          'leaveType': data['leaveType'] ?? '',
+          'startDate': formatDate(data['startDate']),
+          'endDate': formatDate(data['endDate']),
+          'status': data['status'] ?? '',
+        };
+      }).toList();
+    });
+  } catch (e) {
+    print("Error fetching leave requests: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Failed to fetch leave requests')),
+    );
+  } finally {
+    setState(() {
+      _isLoading = false;
+    });
+  }
+}
 
   Future<void> _updateLeaveStatus(String id, String status) async {
     try {
