@@ -226,8 +226,10 @@ class DashboardPage extends StatelessWidget {
 
             const SizedBox(height: 30),
 
-            // Replaced placeholder with live notifications or colleagues on leave widget streamed from Firestore
-            const NotificationsOrColleaguesCard(),
+            Container(
+              color: const Color.fromARGB(255, 131, 61, 61),
+              child: const NotificationsOrColleaguesCard(),
+            ),
           ],
         ),
       ),
