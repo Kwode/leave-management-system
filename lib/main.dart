@@ -30,7 +30,8 @@ class MyApp extends StatelessWidget {
 
   Future<String?> _getUserRole(String uid) async {
     try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
       if (doc.exists) {
         final data = doc.data();
         return data?['role'] as String?;
@@ -73,7 +74,9 @@ class MyApp extends StatelessWidget {
                 );
               }
 
-              if (roleSnapshot.hasError || !roleSnapshot.hasData || roleSnapshot.data == null) {
+              if (roleSnapshot.hasError ||
+                  !roleSnapshot.hasData ||
+                  roleSnapshot.data == null) {
                 return Scaffold(
                   body: Center(
                     child: Text(

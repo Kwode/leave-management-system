@@ -153,6 +153,7 @@ class _HomePageState extends State<HomePage> {
                       ListTile(
                         onTap: () {
                           FirebaseAuth.instance.signOut();
+                          Navigator.pushNamed(context, "signin");
                         },
                         leading: Icon(
                           Icons.logout,
